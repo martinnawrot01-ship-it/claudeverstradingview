@@ -1,0 +1,112 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © martin_nawrot01
+
+//@version=6
+indicator("BPR - Balanced Price Range [Claude]", overlay=true, max_boxes_count=500, max_labels_count=500)
+
+// ── Inputs ──────────────────────────────────────────────
+grpFVG = "Fair Value Gap"
+minGapTicks   = input.float(0.0, "Taille min FVG (en ticks)", minval=0.0, group=grpFVG, tooltip="Filtre les FVG trop petits, utile sur indices volatils")
+maxActiveFVG  = input.int(40, "Nb max FVG actifs suivis", minval=5, maxval=200, group=grpFVG)
+showFVG       = input.bool(true, "Afficher les FVG", group=grpFVG)
+bullFVGColor  = input.color(color.new(color.teal, 85), "Couleur FVG haussier", group=grpFVG)
+bearFVGColor  = input.color(color.new(color.red, 85), "Couleur FVG baissier", group=grpFVG)
+
+grpBPR = "Balanced Price Range"
+showBPR         = input.bool(true, "Afficher les BPR", group=grpBPR)
+bprColor        = input.color(color.new(color.purple, 55), "Couleur BPR", group=grpBPR)
+bprBorderColor  = input.color(color.purple, "Couleur bordure BPR", group=grpBPR)
+extendBars      = input.int(20, "Extension à droite (barres)", minval=0, maxval=200, group=grpBPR)
+deleteMitigated = input.bool(true, "Supprimer FVG/BPR mitigés (prix a comblé le gap)", group=grpBPR)
+
+// ── State ───────────────────────────────────────────────
+var array<box>   bullBoxes = array.new<box>()
+var array<box>   bearBoxes = array.new<box>()
+var array<float> bullTop   = array.new<float>()
+var array<float> bullBot   = array.new<float>()
+var array<float> bearTop   = array.new<float>()
+var array<float> bearBot   = array.new<float>()
+
+minGap = minGapTicks * syminfo.mintick
+
+// ── FVG detection (3-candle model) ─────────────────────
+bullGapTop = low
+bullGapBot = high[2]
+bullFVG = bullGapTop > bullGapBot and (bullGapTop - bullGapBot) >= minGap
+
+bearGapTop = low[2]
+bearGapBot = high
+bearFVG = bearGapTop > bearGapBot and (bearGapTop - bearGapBot) >= minGap
+
+// ── New bullish FVG: store + check overlap vs active bearish FVGs → BPR ──
+if bullFVG
+    box bNew = showFVG ? box.new(bar_index[2], bullGapTop, bar_index + extendBars, bullGapBot, border_color=color.new(color.white, 100), bgcolor=bullFVGColor, extend=extend.none) : na
+    array.push(bullBoxes, bNew)
+    array.push(bullTop, bullGapTop)
+    array.push(bullBot, bullGapBot)
+
+    if showBPR and array.size(bearTop) > 0
+        for i = array.size(bearTop) - 1 to 0
+            bt = array.get(bearTop, i)
+            bb = array.get(bearBot, i)
+            ovTop = math.min(bullGapTop, bt)
+            ovBot = math.max(bullGapBot, bb)
+            if ovTop > ovBot
+                box.new(bar_index, ovTop, bar_index + extendBars, ovBot, border_color=bprBorderColor, bgcolor=bprColor, extend=extend.none)
+                label.new(bar_index, ovTop, "BPR", style=label.style_label_down, color=color.new(color.purple, 100), textcolor=bprBorderColor, size=size.tiny)
+
+// ── New bearish FVG: store + check overlap vs active bullish FVGs → BPR ──
+if bearFVG
+    box brNew = showFVG ? box.new(bar_index[2], bearGapTop, bar_index + extendBars, bearGapBot, border_color=color.new(color.white, 100), bgcolor=bearFVGColor, extend=extend.none) : na
+    array.push(bearBoxes, brNew)
+    array.push(bearTop, bearGapTop)
+    array.push(bearBot, bearGapBot)
+
+    if showBPR and array.size(bullTop) > 0
+        for i = array.size(bullTop) - 1 to 0
+            bt = array.get(bullTop, i)
+            bb = array.get(bullBot, i)
+            ovTop = math.min(bt, bearGapTop)
+            ovBot = math.max(bb, bearGapBot)
+            if ovTop > ovBot
+                box.new(bar_index, ovTop, bar_index + extendBars, ovBot, border_color=bprBorderColor, bgcolor=bprColor, extend=extend.none)
+                label.new(bar_index, ovBot, "BPR", style=label.style_label_up, color=color.new(color.purple, 100), textcolor=bprBorderColor, size=size.tiny)
+
+// ── Mitigation cleanup (remove filled FVGs so arrays stay lean) ──────────
+if deleteMitigated
+    if array.size(bullTop) > 0
+        for i = array.size(bullTop) - 1 to 0
+            if close < array.get(bullBot, i)
+                oldBox = array.get(bullBoxes, i)
+                if not na(oldBox)
+                    box.delete(oldBox)
+                array.remove(bullBoxes, i)
+                array.remove(bullTop, i)
+                array.remove(bullBot, i)
+    if array.size(bearTop) > 0
+        for i = array.size(bearTop) - 1 to 0
+            if close > array.get(bearTop, i)
+                oldBox = array.get(bearBoxes, i)
+                if not na(oldBox)
+                    box.delete(oldBox)
+                array.remove(bearBoxes, i)
+                array.remove(bearTop, i)
+                array.remove(bearBot, i)
+
+// ── Cap tracked arrays to avoid unbounded growth ─────────────────────────
+if array.size(bullTop) > maxActiveFVG
+    array.shift(bullTop)
+    array.shift(bullBot)
+    oldBox2 = array.shift(bullBoxes)
+    if not na(oldBox2)
+        box.delete(oldBox2)
+if array.size(bearTop) > maxActiveFVG
+    array.shift(bearTop)
+    array.shift(bearBot)
+    oldBox3 = array.shift(bearBoxes)
+    if not na(oldBox3)
+        box.delete(oldBox3)
+
+// ── Alerts ──────────────────────────────────────────────
+alertcondition(bullFVG, "Nouveau FVG haussier", "FVG haussier détecté sur {{ticker}}")
+alertcondition(bearFVG, "Nouveau FVG baissier", "FVG baissier détecté sur {{ticker}}")

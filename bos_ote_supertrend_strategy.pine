@@ -1,0 +1,121 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © martin_nawrot01
+
+//@version=6
+strategy("BOS + OTE + Supertrend [Claude]", overlay=true, initial_capital=10000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=1, pyramiding=0,
+     calc_on_every_tick=false, process_orders_on_close=true)
+
+// ── Inputs ──────────────────────────────────────────────
+grpGen = "Forward test"
+forwardOnlyDate = input.time(timestamp("2026-09-01T00:00:00"), "Ne trader qu'à partir de", group=grpGen,
+     tooltip="Ignore tous les signaux avant cette date, pour valider hors-échantillon (pas de biais d'optimisation)")
+rr       = input.float(2.0, "Risk:Reward", minval=0.5, group=grpGen)
+atrMult  = input.float(1.0, "Multiplicateur ATR pour SL", minval=0.1, group=grpGen)
+atrLen   = input.int(10, "Période ATR", group=grpGen)
+
+grpST = "Supertrend"
+stPeriod = input.int(10, "Période", group=grpST)
+stMult   = input.float(3.0, "Multiplicateur", group=grpST)
+
+grpOTE = "OTE (retracement)"
+oteLo     = input.float(0.5, "OTE bas (retracement min)", group=grpOTE)
+oteHi     = input.float(0.79, "OTE haut (retracement max)", group=grpOTE)
+pivotLen  = input.int(2, "Longueur pivot (swing)", group=grpOTE)
+showZones = input.bool(true, "Afficher les zones OTE", group=grpOTE)
+
+// ── Supertrend ──────────────────────────────────────────
+[supertrendLine, stDirRaw] = ta.supertrend(stMult, stPeriod)
+stDirUp = stDirRaw < 0
+plot(supertrendLine, "Supertrend", color = stDirUp ? color.green : color.red)
+
+// ── Pivots (swing high/low, confirmed, non-repainting) ──
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low, pivotLen, pivotLen)
+
+var float swingHigh = na
+var float swingLow  = na
+if not na(ph)
+    swingHigh := ph
+if not na(pl)
+    swingLow := pl
+
+// ── BOS + leg tracking ──────────────────────────────────
+var string trend        = na
+var float  legLow       = na
+var float  legHigh      = na
+var bool   legEntryTaken = false
+
+atrVal = ta.atr(atrLen)
+
+if not na(swingHigh) and close > swingHigh and trend != "up"
+    trend := "up"
+    legLow := na(swingLow) ? low : swingLow
+    legHigh := high
+    legEntryTaken := false
+else if trend == "up"
+    legHigh := math.max(legHigh, high)
+    if close < legLow
+        trend := na
+if not na(swingLow) and close < swingLow and trend != "down"
+    trend := "down"
+    legHigh := na(swingHigh) ? high : swingHigh
+    legLow := low
+    legEntryTaken := false
+else if trend == "down"
+    legLow := math.min(legLow, low)
+    if close > legHigh
+        trend := na
+
+// ── OTE zone + entry conditions ─────────────────────────
+float oteTop = na
+float oteBot = na
+longCond  = false
+shortCond = false
+
+if trend == "up" and not legEntryTaken and legHigh > legLow
+    rng = legHigh - legLow
+    oteTop := legHigh - oteLo * rng
+    oteBot := legHigh - oteHi * rng
+    touches = low <= oteTop and high >= oteBot
+    if touches and close > oteBot and stDirUp
+        longCond := true
+
+if trend == "down" and not legEntryTaken and legHigh > legLow
+    rng = legHigh - legLow
+    oteBot := legLow + oteLo * rng
+    oteTop := legLow + oteHi * rng
+    touches = low <= oteTop and high >= oteBot
+    if touches and close < oteTop and not stDirUp
+        shortCond := true
+
+if showZones and (longCond or shortCond)
+    box.new(bar_index - 1, oteTop, bar_index + 10, oteBot,
+         border_color = longCond ? color.green : color.red,
+         bgcolor = color.new(longCond ? color.green : color.red, 85),
+         extend = extend.none, text = "OTE", text_color = longCond ? color.green : color.red, text_size = size.tiny)
+
+forwardOk = time >= forwardOnlyDate
+
+// ── Orders (TradingView strategy tester — paper only, no live broker) ──
+if longCond and forwardOk and strategy.position_size == 0
+    slPrice = close - atrMult * atrVal
+    risk = close - slPrice
+    tpPrice = close + rr * risk
+    legEntryTaken := true
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Exit Long", "Long", stop = slPrice, limit = tpPrice)
+
+if shortCond and forwardOk and strategy.position_size == 0
+    slPrice = close + atrMult * atrVal
+    risk = slPrice - close
+    tpPrice = close - rr * risk
+    legEntryTaken := true
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Exit Short", "Short", stop = slPrice, limit = tpPrice)
+
+plotshape(longCond and forwardOk, title = "Long signal", style = shape.triangleup, location = location.belowbar, color = color.green, size = size.small)
+plotshape(shortCond and forwardOk, title = "Short signal", style = shape.triangledown, location = location.abovebar, color = color.red, size = size.small)
+
+alertcondition(longCond and forwardOk, "Signal Long BOS+OTE", "Long signal on {{ticker}}")
+alertcondition(shortCond and forwardOk, "Signal Short BOS+OTE", "Short signal on {{ticker}}")

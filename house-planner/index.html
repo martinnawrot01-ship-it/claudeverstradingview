@@ -54,7 +54,7 @@ header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
 main.work{display:grid;grid-template-columns:310px minmax(0,1fr) 280px;gap:10px;min-height:0}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:0;display:flex;flex-direction:column;min-width:0}
 .tabs{display:flex;border-bottom:1px solid var(--line);padding:0 6px;flex:none;overflow-x:auto}
-.tabs button{border:0;background:transparent;padding:10px 8px 9px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button{border:0;background:transparent;padding:10px 7px 9px;font-size:13.5px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .scroll{overflow:auto;padding:14px;display:flex;flex-direction:column;gap:14px;min-height:0;flex:1}
 .scroll > *{flex:none}
@@ -89,6 +89,19 @@ input[type=color]{width:34px;height:28px;border:1px solid var(--line);border-rad
 .overlay{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .overlay.r{left:auto;right:10px}
 .legend{font-size:11.5px;color:var(--muted);background:color-mix(in srgb,var(--panel) 85%,transparent);padding:4px 8px;border-radius:var(--r);border:1px solid var(--line)}
+.overlay.top{top:10px;bottom:auto;left:10px;right:10px}
+.walk-help{position:absolute;left:50%;transform:translateX(-50%);top:54px;font-size:12px;color:#fff;background:rgba(10,12,14,.55);padding:5px 10px;border-radius:99px;pointer-events:none;white-space:nowrap}
+.pad{position:absolute;right:12px;bottom:56px;display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(2,40px);gap:4px}
+.pad button{border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 88%,transparent);border-radius:8px;font-size:14px;touch-action:none}
+.pad [data-mv=f]{grid-column:2;grid-row:1}.pad [data-mv=l]{grid-column:1;grid-row:2}.pad [data-mv=b]{grid-column:2;grid-row:2}.pad [data-mv=r]{grid-column:3;grid-row:2}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;cursor:pointer;background:var(--panel-2)}
+.drop.over,.drop:hover{border-color:var(--accent)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.thumbs:empty{display:none}
+.thumbs figure{margin:0;position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid var(--line);max-width:100%}
+.thumbs img{width:100%;height:100%;object-fit:cover;display:block}
+.thumbs button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:99px;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:1}
 .msg3d{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);padding:20px;text-align:center}
 
 /* plan svg */
@@ -207,9 +220,10 @@ dialog::backdrop{background:rgba(10,14,13,.45)}
   <main class="work">
     <section class="panel" id="sidebar">
       <div class="tabs" role="tablist">
+        <button role="tab" data-tab="import" aria-selected="false">Importer</button>
         <button role="tab" data-tab="annonce" aria-selected="true">Annonce</button>
         <button role="tab" data-tab="pieces" aria-selected="false">Pièces</button>
-        <button role="tab" data-tab="deco" aria-selected="false">Style &amp; déco</button>
+        <button role="tab" data-tab="deco" aria-selected="false">Déco</button>
         <button role="tab" data-tab="budget" aria-selected="false">Travaux</button>
       </div>
       <div class="scroll" id="tab-annonce">
@@ -239,6 +253,25 @@ dialog::backdrop{background:rgba(10,14,13,.45)}
       <div class="scroll" id="tab-pieces" hidden></div>
       <div class="scroll" id="tab-deco" hidden></div>
       <div class="scroll" id="tab-budget" hidden></div>
+      <div class="scroll" id="tab-import" hidden>
+        <div class="stack">
+          <h2>Modéliser depuis un plan ou des photos</h2>
+          <p class="hint">Déposez le plan de l'agence (le plus fiable), un croquis coté ou des photos des pièces. Claude les analyse et construit la maquette : pièces, murs, portes, fenêtres, sols et équipements visibles.</p>
+        </div>
+        <label class="drop" id="drop">
+          <input type="file" id="imp-files" accept="image/png,image/jpeg,image/webp,image/gif" multiple>
+          <b>Choisir des images</b><span class="hint">ou glissez-les ici · plan, photos, captures d'annonce</span>
+        </label>
+        <div class="thumbs" id="thumbs"></div>
+        <label class="f">Ce que vous savez déjà (facultatif)
+          <textarea id="imp-notes" style="min-height:90px" placeholder="Ex. : maison de ville 76 m², 2 niveaux + combles, façade de 4,5 m, cuisine de 3,6 m de long…"></textarea></label>
+        <div class="inline">
+          <button class="btn primary" id="imp-go">Modéliser en 3D</button>
+          <button class="btn" id="imp-stop" hidden>Arrêter</button>
+        </div>
+        <p class="hint" id="imp-status"></p>
+        <div class="note" id="imp-notes-out" hidden></div>
+      </div>
     </section>
 
     <section class="panel viewport">
@@ -262,6 +295,15 @@ dialog::backdrop{background:rgba(10,14,13,.45)}
         </div>
         <div class="view" id="v3d">
           <div id="view3d" style="position:absolute;inset:0"></div>
+          <div class="overlay top">
+            <div class="seg" id="cammode"><button data-c="orbit">Maquette</button><button data-c="walk">Visite</button></div>
+            <div class="seg" id="ambiance"><button data-a="jour">Jour</button><button data-a="soir">Soirée</button></div>
+            <button class="btn sm" id="tour">▶ Visite guidée</button>
+          </div>
+          <div class="walk-help" id="walk-help" hidden>Glissez pour regarder · cliquez au sol pour avancer · flèches ou ZQSD</div>
+          <div class="pad" id="walk-pad" hidden>
+            <button data-mv="f" aria-label="Avancer">▲</button><button data-mv="l" aria-label="Tourner à gauche">◀</button><button data-mv="b" aria-label="Reculer">▼</button><button data-mv="r" aria-label="Tourner à droite">▶</button>
+          </div>
           <div class="overlay">
             <div class="seg" id="wallmode"><button data-w="full">Murs pleins</button><button data-w="cut">Murs coupés</button></div>
             <button class="btn sm" id="cam-fit">Recentrer</button>
@@ -292,6 +334,7 @@ dialog::backdrop{background:rgba(10,14,13,.45)}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
 <script>
 (() => {
 'use strict';
@@ -373,8 +416,8 @@ function maisonDeVille(){
     Rm(0, 'sejour',   'Séjour',          0,   0,    4.0, 3.9, 'stratifie-fonce', WH),
     Rm(0, 'sam',      'Salle à manger',  0,   3.9,  3.1, 2.7, 'stratifie-fonce', WH),
     Rm(0, 'escalier', 'Escalier',        3.1, 3.9,  0.9, 2.7, 'stratifie-fonce', WH),
-    Rm(0, 'cuisine',  'Cuisine (verrière)', 1.3, 6.6, 2.7, 3.6, 'stratifie-fonce', GR),
-    Rm(0, 'buanderie','Arrière-cuisine', 1.3, 10.2, 1.7, 2.0, 'stratifie-clair', WH),
+    Object.assign(Rm(0, 'cuisine',  'Cuisine (verrière)', 1.3, 6.6, 2.7, 3.6, 'stratifie-fonce', GR), {skylight: true}),
+    Object.assign(Rm(0, 'buanderie','Arrière-cuisine', 1.3, 10.2, 1.7, 2.0, 'stratifie-clair', WH), {skylight: true}),
     Rm(0, 'wc',       'WC',              3.0, 10.2, 1.0, 2.0, 'carrelage-clair', WH),
     Rm(0, 'terrasse', 'Passage',         0,   6.6,  1.3, 5.6, 'dallage', '#e7dcc0'),
     Rm(0, 'terrasse', 'Cour',            0,   12.2, 4.0, 2.8, 'dallage', '#e7dcc0'),
@@ -986,46 +1029,58 @@ function init3D(){
   const renderer = new THREE.WebGLRenderer({antialias: true});
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   host.appendChild(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.495; controls.screenSpacePanning = true;
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x9a917f, 0.62));
-  const sun = new THREE.DirectionalLight(0xfff4e6, 0.72); sun.position.set(-14, 26, 18); sun.castShadow = true;
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a917f, 0.55); scene.add(hemi);
+  if (THREE.RoomEnvironment){ try { const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(new THREE.RoomEnvironment(), 0.04).texture; } catch (e) {} }
+  const sun = new THREE.DirectionalLight(0xfff4e6, 0.9); sun.position.set(-14, 26, 18); sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, {left: -25, right: 25, top: 25, bottom: -25, near: 1, far: 90}); sun.shadow.bias = -0.0005;
   scene.add(sun); scene.add(sun.target);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.18));
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({color: 0xc9d1c2, roughness: 1}));
+  const amb = new THREE.AmbientLight(0xffffff, 0.1); scene.add(amb);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({color: 0xc9d1c2, roughness: 1, envMapIntensity: 0.2}));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; ground.receiveShadow = true; scene.add(ground);
   const group = new THREE.Group(); scene.add(group);
-  T = {renderer, scene, camera, controls, sun, ground, group, mats: {}, fitted: false};
+  T = {renderer, scene, camera, controls, sun, hemi, amb, ground, group, mats: {}, fitted: false};
+  camera.rotation.order = 'YXZ';
   const ro = new ResizeObserver(() => { const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); });
   ro.observe(host);
   // sélection par clic
   let down = null; const ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
-  renderer.domElement.addEventListener('pointerdown', e => down = {x: e.clientX, y: e.clientY});
+  renderer.domElement.addEventListener('pointerdown', e => { stopTour(); down = {x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY}; if (camMode === 'walk') renderer.domElement.setPointerCapture(e.pointerId); });
+  renderer.domElement.addEventListener('pointermove', e => { if (camMode !== 'walk' || !down) return; W.yaw -= (e.clientX - down.lx) * 0.0045; W.pitch = clamp(W.pitch - (e.clientY - down.ly) * 0.0035, -1.2, 1.2); down.lx = e.clientX; down.ly = e.clientY; applyWalkCam(); });
   renderer.domElement.addEventListener('pointerup', e => {
-    if (!down || Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y) > 5) return;
+    const was = down; down = null;
+    if (!was || Math.abs(e.clientX - was.x) + Math.abs(e.clientY - was.y) > 5) return;
     const rc = renderer.domElement.getBoundingClientRect(); v2.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
-    ray.setFromCamera(v2, camera); const hit = ray.intersectObjects(group.children, true)[0];
+    ray.setFromCamera(v2, camera); const hit = ray.intersectObjects(group.children, true).find(h => h.object.visible && !h.object.userData.noPick);
+    if (camMode === 'walk'){ if (hit && hit.object.userData.floor != null){ walkTo(hit.point.x, hit.point.z); } return; }
     let o = hit && hit.object; while (o && !o.userData.sel) o = o.parent;
     sel = o ? o.userData.sel : null;
     if (sel && sel.t === 'room'){ const r = room(sel.id); if (r && r.level !== level){ level = r.level; renderLevels(); } }
     if (sel && sel.t === 'item'){ const it = item(sel.id); if (it && it.level !== level){ level = it.level; renderLevels(); } }
     renderPlan(); renderInspector(); highlightList();
   });
-  (function loop(){ requestAnimationFrame(loop); if (!$('#v3d').hidden){ controls.update(); renderer.render(scene, camera); } })();
+  let last = performance.now();
+  (function loop(now){ requestAnimationFrame(loop); const dt = Math.min(0.05, ((now || performance.now()) - last) / 1000); last = now || performance.now();
+    if ($('#v3d').hidden) return; stepAnim(); if (camMode === 'walk') stepWalk(dt); else controls.update(); renderer.render(scene, camera); })();
   themeColors3D();
 }
 function themeColors3D(){
   if (!T) return; const cs = getComputedStyle(document.documentElement);
-  T.scene.background = new THREE.Color(cs.getPropertyValue('--plan-bg').trim() || '#f6f7f5');
-  T.ground.material.color.set(cs.getPropertyValue('--ground').trim() || '#c9d1c2');
+  const night = ambiance === 'soir';
+  T.scene.background = new THREE.Color(night ? '#11151c' : (cs.getPropertyValue('--plan-bg').trim() || '#f6f7f5')).convertSRGBToLinear();
+  T.ground.material.color.set(night ? '#1d2320' : (cs.getPropertyValue('--ground').trim() || '#c9d1c2')).convertSRGBToLinear();
+  T.sun.intensity = night ? 0.05 : 0.9; T.hemi.intensity = night ? 0.06 : 0.55; T.amb.intensity = night ? 0.02 : 0.1;
+  T.renderer.toneMappingExposure = night ? 1.2 : 0.92;
+  if (T.scene.environment) T.envOn = true;
 }
 function mat(color, o = {}){
   const key = color + JSON.stringify(o);
-  if (!T.mats[key]) T.mats[key] = new THREE.MeshStandardMaterial(Object.assign({color, roughness: 0.82, metalness: 0}, o));
+  if (!T.mats[key]){ const m = new THREE.MeshStandardMaterial(Object.assign({color, roughness: 0.82, metalness: 0, envMapIntensity: 0.6}, o)); m.color.convertSRGBToLinear(); if (o.emissive) m.emissive.convertSRGBToLinear(); T.mats[key] = m; }
   return T.mats[key];
 }
 function schedule3D(){ clearTimeout(t3); t3 = setTimeout(build3D, 90); }
@@ -1096,9 +1151,9 @@ function build3D(){
     const elev = r.level * LEVEL_H, rg = new THREE.Group(); rg.userData.sel = {t: 'room', id: r.id};
     // sol
     const F = FLOORS[r.floor] || FLOORS.brut; const tc = floorCanvas(r.floor || 'brut');
-    const tex = new THREE.CanvasTexture(tc.canvas); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(r.w / F.size, r.d / F.size); tex.anisotropy = 4;
+    const tex = new THREE.CanvasTexture(tc.canvas); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(r.w / F.size, r.d / F.size); tex.anisotropy = 8; tex.encoding = THREE.sRGBEncoding;
     const fm = new THREE.MeshStandardMaterial({map: tex, roughness: ['marbre','carrelage-clair'].includes(r.floor) ? 0.35 : 0.8}); fm.userData.own = true;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), fm); floor.rotation.x = -Math.PI / 2; floor.position.set(r.x + r.w / 2, elev + 0.012, r.y + r.d / 2); floor.receiveShadow = true; rg.add(floor);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), fm); floor.rotation.x = -Math.PI / 2; floor.position.set(r.x + r.w / 2, elev + 0.012, r.y + r.d / 2); floor.receiveShadow = true; floor.userData.floor = elev; rg.add(floor);
     if (r.level > 0) box(rg, r.w, 0.2, r.d, '#f2f1ee', r.x + r.w / 2, elev - 0.1, r.y + r.d / 2);
     else box(rg, r.w, 0.12, r.d, '#b9b6ae', r.x + r.w / 2, -0.05, r.y + r.d / 2);
     // murs
@@ -1115,7 +1170,7 @@ function build3D(){
           if (cb > s0){ if (c.sill > 0) parts.push([s0, cb, 0, Math.min(c.sill, H)]); if (c.top < H) parts.push([s0, cb, c.top, H]); } cur = Math.max(cur, cb); });
         if (cur < E.b) parts.push([cur, E.b, 0, H]);
         parts.forEach(([a, b, y0, y1]) => { if (b - a < 0.005 || y1 - y0 < 0.005) return; const m = (a + b) / 2, h = y1 - y0;
-          if (E.hor) box(rg, b - a, h, t, wm, m, elev + y0 + h / 2, E.off); else box(rg, t, h, b - a, wm, E.off, elev + y0 + h / 2, m); });
+          const wb = E.hor ? box(rg, b - a, h, t, wm, m, elev + y0 + h / 2, E.off) : box(rg, t, h, b - a, wm, E.off, elev + y0 + h / 2, m); if (y0 < 1.2) wb.userData.wall = true; });
       });
     } else {
       const R = 0.04; [[r.x, r.y], [r.x + r.w, r.y], [r.x, r.y + r.d], [r.x + r.w, r.y + r.d]].forEach(([x, z]) => cyl(rg, R, R, 0.05, '#7a6a58', x, 0.03, z));
@@ -1125,6 +1180,25 @@ function build3D(){
       for (let i = 0; i < n; i++){ const hgt = (i + 1) * rise, u = run * (i + 0.5);
         if (long) box(rg, run, hgt, V, st.wood, r.x + u, elev + hgt / 2, r.y + r.d / 2);
         else box(rg, V, hgt, run, st.wood, r.x + r.w / 2, elev + hgt / 2, r.y + r.d - u); }
+    }
+    // plinthes, plafond et éclairage (rendu réaliste)
+    if (r.level === showMax && !NON_HAB.has(r.type) && r.type !== 'escalier'){
+      const pl = mat('#f4f2ee', {roughness: 0.6}), ph = 0.07, pt = 0.012, t = 0.07;
+      [[r.w - 2 * t, pt, r.x + r.w / 2, r.y + t + pt / 2], [r.w - 2 * t, pt, r.x + r.w / 2, r.y + r.d - t - pt / 2]].forEach(([w, d, x, z]) => { const m = box(rg, w, ph, d, pl, x, elev + ph / 2, z); m.castShadow = false; });
+      [[pt, r.d - 2 * t, r.x + t + pt / 2, r.y + r.d / 2], [pt, r.d - 2 * t, r.x + r.w - t - pt / 2, r.y + r.d / 2]].forEach(([w, d, x, z]) => { const m = box(rg, w, ph, d, pl, x, elev + ph / 2, z); m.castShadow = false; });
+      if (camMode === 'walk' && wallMode !== 'cut'){
+        const c = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), mat(ambiance === 'soir' ? '#2a2c30' : '#f7f6f3', {roughness: 0.95, side: THREE.DoubleSide}));
+        c.rotation.x = Math.PI / 2; c.position.set(r.x + r.w / 2, elev + WALL_H, r.y + r.d / 2); c.userData.noPick = true; rg.add(c);
+        if (r.skylight){ const sk = new THREE.Mesh(new THREE.PlaneGeometry(r.w * 0.55, r.d * 0.5), mat('#dfeefa', {emissive: '#cfe6ff', emissiveIntensity: ambiance === 'soir' ? 0.15 : 1.1, side: THREE.DoubleSide}));
+          sk.rotation.x = Math.PI / 2; sk.position.set(r.x + r.w / 2, elev + WALL_H - 0.005, r.y + r.d / 2); sk.userData.noPick = true; rg.add(sk); }
+        const spots = Math.max(1, Math.min(3, Math.round(Math.max(r.w, r.d) / 2.4)));
+        for (let i = 0; i < spots; i++){ const long = r.w >= r.d, u = (i + 0.5) / spots;
+          const sx = long ? r.x + r.w * u : r.x + r.w / 2, sz = long ? r.y + r.d / 2 : r.y + r.d * u;
+          const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 20), mat('#fff6e0', {emissive: '#ffe2b0', emissiveIntensity: ambiance === 'soir' ? 2 : 0.6}));
+          sp.position.set(sx, elev + WALL_H - 0.012, sz); sp.userData.noPick = true; rg.add(sp); }
+      }
+      const pt2 = new THREE.PointLight(ambiance === 'soir' ? 0xffcf8f : 0xfff3e2, ambiance === 'soir' ? 0.75 : (camMode === 'walk' ? 0.18 : 0.1), Math.max(r.w, r.d) * 1.9 + 2, 2);
+      pt2.position.set(r.x + r.w / 2, elev + WALL_H - 0.35, r.y + r.d / 2); rg.add(pt2);
     }
     T.group.add(rg);
   });
@@ -1150,21 +1224,109 @@ function build3D(){
     T.group.add(g);
   });
   // surbrillance
-  if (sel){ const o = T.group.children.find(c => c.userData.sel && c.userData.sel.id === sel.id);
+  if (sel && camMode !== 'walk'){ const o = T.group.children.find(c => c.userData.sel && c.userData.sel.id === sel.id);
     if (o){ const bb = new THREE.Box3().setFromObject(o); const hlp = new THREE.Box3Helper(bb, new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--sel').trim() || '#d9622a')); T.group.add(hlp); } }
-  if (!T.fitted){ fit3D(); T.fitted = true; }
+  if (!T.fitted && camMode !== 'walk'){ fit3D(); T.fitted = true; }
+  themeColors3D();
 }
 function bounds(lv){ const rs = S.rooms.filter(r => lv == null || r.level <= lv); if (!rs.length) return {x0: 0, y0: 0, x1: 10, y1: 8};
   return {x0: Math.min(...rs.map(r => r.x)), y0: Math.min(...rs.map(r => r.y)), x1: Math.max(...rs.map(r => r.x + r.w)), y1: Math.max(...rs.map(r => r.y + r.d))}; }
-function fit3D(){ if (!T) return; const b = bounds(level), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2, sz = Math.max(b.x1 - b.x0, b.y1 - b.y0, 6);
+/* --- mouvements de caméra (motion design) --- */
+let camMode = 'orbit', ambiance = 'jour', anim = null, tourTok = 0;
+const W = {yaw: 0, pitch: -0.08, keys: new Set(), pad: null};
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function tween(toPos, toTarget, dur = 1400, toYaw, toPitch){ return new Promise(res => {
+  const c = T.camera; anim = {t0: performance.now(), dur, p0: c.position.clone(), p1: toPos.clone(), q0: T.controls.target.clone(), q1: toTarget ? toTarget.clone() : null,
+    y0: W.yaw, y1: toYaw ?? W.yaw, k0: W.pitch, k1: toPitch ?? W.pitch, res}; }); }
+function stepAnim(){ if (!anim) return; const a = anim, t = clamp((performance.now() - a.t0) / a.dur, 0, 1), k = ease(t);
+  T.camera.position.lerpVectors(a.p0, a.p1, k);
+  if (camMode === 'walk'){ W.yaw = a.y0 + (a.y1 - a.y0) * k; W.pitch = a.k0 + (a.k1 - a.k0) * k; applyWalkCam(); }
+  else if (a.q1){ T.controls.target.lerpVectors(a.q0, a.q1, k); }
+  if (t >= 1){ anim = null; a.res(); } }
+function fitPose(){ const b = bounds(level), cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2, sz = Math.max(b.x1 - b.x0, b.y1 - b.y0, 6);
   const host = $('#view3d'), asp = (host.clientWidth / host.clientHeight) || 1.4;
   const dist = (sz / 2) / Math.tan(21 * Math.PI / 180) / Math.min(1, asp) * 0.8;
-  const dir = new THREE.Vector3(-0.45, 0.85, 0.85).normalize().multiplyScalar(dist);
-  T.controls.target.set(cx, level * LEVEL_H + 0.5, cz); T.camera.position.set(cx + dir.x, level * LEVEL_H + 0.5 + dir.y, cz + dir.z); T.controls.update();
-  T.sun.position.set(cx - 14, 26, cz + 18); T.sun.target.position.set(cx, 0, cz); }
-function focusRoom(r){ if (viewMode === '2d'){ setView('split'); setTimeout(() => focusRoom(r), 200); return; } if (!T) return; const cx = r.x + r.w / 2, cz = r.y + r.d / 2, e = r.level * LEVEL_H, s = Math.max(r.w, r.d);
-  T.controls.target.set(cx, e + 0.6, cz); T.camera.position.set(cx - s * 0.35, e + s * 0.9 + 2.2, cz + s * 0.95 + 1); T.controls.update(); }
-$('#cam-fit').onclick = fit3D;
+  const dir = new THREE.Vector3(-0.45, 0.85, 0.85).normalize().multiplyScalar(dist), tg = new THREE.Vector3(cx, level * LEVEL_H + 0.5, cz);
+  T.sun.position.set(cx - 14, 26, cz + 18); T.sun.target.position.set(cx, 0, cz);
+  return {pos: tg.clone().add(dir), tg}; }
+function fit3D(animated){ if (!T) return; if (camMode === 'walk') setCam('orbit'); const p = fitPose();
+  if (animated){ tween(p.pos, p.tg, 1300); } else { T.controls.target.copy(p.tg); T.camera.position.copy(p.pos); T.controls.update(); } }
+function focusRoom(r){ if (viewMode === '2d'){ setView('split'); setTimeout(() => focusRoom(r), 200); return; } if (!T) return;
+  if (r.level !== level){ level = r.level; renderLevels(); build3D(); }
+  if (camMode === 'walk'){ walkIntoRoom(r, 1400); return; }
+  const cx = r.x + r.w / 2, cz = r.y + r.d / 2, e = r.level * LEVEL_H, s = Math.max(r.w, r.d);
+  tween(new THREE.Vector3(cx - s * 0.35, e + s * 0.9 + 2.2, cz + s * 0.95 + 1), new THREE.Vector3(cx, e + 0.6, cz), 1300); }
+$('#cam-fit').onclick = () => { stopTour(); fit3D(true); };
+
+/* --- visite à la première personne --- */
+const EYE = 1.6;
+function applyWalkCam(){ T.camera.rotation.set(W.pitch, W.yaw, 0); }
+function eyeY(){ return level * LEVEL_H + EYE; }
+function roomAt(x, z){ return S.rooms.find(r => r.level === level && x >= r.x && x <= r.x + r.w && z >= r.y && z <= r.y + r.d); }
+function walkTo(x, z){ const d = Math.hypot(x - T.camera.position.x, z - T.camera.position.z);
+  return tween(new THREE.Vector3(x, eyeY(), z), null, clamp(d * 420, 500, 2200), W.yaw, W.pitch); }
+function viewPoint(r){ // depuis le seuil d'une porte de la pièce, sinon depuis le milieu d'un petit côté
+  const cx = r.x + r.w / 2, cz = r.y + r.d / 2;
+  const ops = openingsOfRoom(r).filter(o => o.kind !== 'window').sort((a, b) => (b.kind === 'open') - (a.kind === 'open'));
+  if (ops.length){ const o = ops[0], hor = Math.abs(o.y1 - o.y2) < 1e-6, mx = (o.x1 + o.x2) / 2, mz = (o.y1 + o.y2) / 2;
+    const px = hor ? mx : mx + Math.sign(cx - mx) * 0.35, pz = hor ? mz + Math.sign(cz - mz) * 0.35 : mz;
+    const tx = hor ? cx : (cx - px) * 2 + px, tz = hor ? (cz - pz) * 2 + pz : cz;
+    return {x: px, z: pz, yaw: Math.atan2(-(tx - px), -(tz - pz))}; }
+  const m = Math.min(0.45, Math.min(r.w, r.d) / 3);
+  if (r.d >= r.w) return {x: r.x + r.w * 0.5, z: r.y + r.d - m, yaw: 0};
+  return {x: r.x + m, z: r.y + r.d * 0.5, yaw: -Math.PI / 2}; }
+function walkIntoRoom(r, dur = 1600, off = 0){ const v = viewPoint(r); let dy = v.yaw + off - W.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+  return tween(new THREE.Vector3(v.x, r.level * LEVEL_H + EYE, v.z), null, dur, W.yaw + dy, -0.12); }
+function setCam(m){ if (!T) return; camMode = m; anim = null;
+  document.querySelectorAll('#cammode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === m));
+  $('#walk-help').hidden = m !== 'walk'; $('#walk-pad').hidden = m !== 'walk';
+  T.controls.enabled = m !== 'walk';
+  if (m === 'walk'){ T.camera.fov = 72; T.camera.updateProjectionMatrix();
+    const start = (sel && sel.t === 'room' && room(sel.id)) || S.rooms.find(r => r.level === level && r.type === 'sejour') || S.rooms.find(r => r.level === level && !NON_HAB.has(r.type));
+    build3D();
+    if (start){ const v = viewPoint(start); T.camera.position.set(v.x, start.level * LEVEL_H + EYE, v.z); W.yaw = v.yaw; W.pitch = -0.1; applyWalkCam(); }
+  } else { T.camera.fov = 42; T.camera.updateProjectionMatrix(); build3D(); const p = fitPose(); T.camera.position.copy(p.pos); T.controls.target.copy(p.tg); T.controls.update(); }
+}
+const wallRay = typeof THREE !== 'undefined' ? new THREE.Raycaster() : null;
+function blocked(dx, dz){ const len = Math.hypot(dx, dz); if (!len) return true; const o = T.camera.position.clone(); o.y = level * LEVEL_H + 0.6;
+  wallRay.set(o, new THREE.Vector3(dx / len, 0, dz / len)); wallRay.far = len + 0.25;
+  return wallRay.intersectObjects(T.group.children, true).some(h => h.object.userData.wall); }
+function stepWalk(dt){ const k = W.keys, p = W.pad; let f = 0, s2 = 0, turn = 0;
+  if (k.has('f') || p === 'f') f += 1; if (k.has('b') || p === 'b') f -= 1; if (k.has('sl')) s2 -= 1; if (k.has('sr')) s2 += 1;
+  if (k.has('l') || p === 'l') turn += 1; if (k.has('r') || p === 'r') turn -= 1;
+  if (turn){ W.yaw += turn * dt * 1.6; applyWalkCam(); }
+  if (!f && !s2) return; anim = null;
+  const sp = 1.7 * dt, fx = -Math.sin(W.yaw), fz = -Math.cos(W.yaw), dx = (fx * f + -fz * s2) * sp, dz = (fz * f + fx * s2) * sp;
+  if (!blocked(dx, 0)) T.camera.position.x += dx; if (!blocked(0, dz)) T.camera.position.z += dz; T.camera.position.y = eyeY(); }
+const KEYMAP = {ArrowUp: 'f', KeyW: 'f', KeyZ: 'f', ArrowDown: 'b', KeyS: 'b', ArrowLeft: 'l', ArrowRight: 'r', KeyA: 'sl', KeyQ: 'sl', KeyD: 'sr'};
+document.addEventListener('keydown', e => { if (camMode !== 'walk' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; const m = KEYMAP[e.code]; if (m){ e.preventDefault(); stopTour(); W.keys.add(m); } });
+document.addEventListener('keyup', e => { const m = KEYMAP[e.code]; if (m) W.keys.delete(m); });
+window.addEventListener('blur', () => W.keys.clear());
+$('#walk-pad').addEventListener('pointerdown', e => { const b = e.target.closest('[data-mv]'); if (!b) return; stopTour(); W.pad = b.dataset.mv; b.setPointerCapture(e.pointerId); });
+['pointerup','pointercancel','pointerleave'].forEach(ev => $('#walk-pad').addEventListener(ev, () => W.pad = null));
+$('#cammode').onclick = e => { const b = e.target.closest('[data-c]'); if (b){ stopTour(); setCam(b.dataset.c); } };
+$('#ambiance').onclick = e => { const b = e.target.closest('[data-a]'); if (!b) return; ambiance = b.dataset.a; document.querySelectorAll('#ambiance button').forEach(x => x.setAttribute('aria-pressed', x === b)); build3D(); };
+
+/* --- visite guidée : enchaînement animé des pièces --- */
+function stopTour(){ if (!tourTok) return; tourTok = 0; $('#tour').textContent = '▶ Visite guidée'; }
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function runTour(){
+  if (tourTok){ stopTour(); return; }
+  if (!T){ setView('split'); await wait(400); if (!T) return; }
+  const tok = tourTok = Date.now(); $('#tour').textContent = '■ Arrêter la visite';
+  const lvls = [...new Set(S.rooms.filter(r => !NON_HAB.has(r.type) && r.type !== 'escalier').map(r => r.level))].sort();
+  const p = fitPose(); if (camMode === 'walk') setCam('orbit'); await tween(p.pos.clone().multiplyScalar(1), p.tg, 900); if (tok !== tourTok) return;
+  for (const lv of lvls){
+    if (level !== lv){ level = lv; renderLevels(); renderPlan(); }
+    setCam('walk'); if (tok !== tourTok) return;
+    for (const r of S.rooms.filter(q => q.level === lv && !NON_HAB.has(q.type) && !['escalier','couloir'].includes(q.type))){
+      await walkIntoRoom(r, 1800, 0.35); if (tok !== tourTok) return;
+      await tween(T.camera.position.clone(), null, 3000, W.yaw - 0.7, -0.1); if (tok !== tourTok) return;
+    }
+  }
+  setCam('orbit'); stopTour();
+}
+$('#tour').onclick = runTour;
 
 /* ===================== Panneaux ===================== */
 function renderLevels(){
@@ -1178,11 +1340,13 @@ function setView(v){ viewMode = v; const views = $('#views'); views.classList.to
   requestAnimationFrame(() => { setVB(); renderPlan(); if (v !== '2d' && !T) { init3D(); build3D(); } }); }
 $('#viewmode').onclick = e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); };
 function setWall(w){ wallMode = w; document.querySelectorAll('#wallmode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.w === w)); build3D(); }
+document.querySelectorAll('#cammode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === 'orbit'));
+document.querySelectorAll('#ambiance button').forEach(b => b.setAttribute('aria-pressed', b.dataset.a === 'jour'));
 $('#wallmode').onclick = e => { const b = e.target.closest('[data-w]'); if (b) setWall(b.dataset.w); };
 
 document.querySelector('.tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab;
   document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
-  ['annonce','pieces','deco','budget'].forEach(t => $('#tab-' + t).hidden = t !== tab); renderTab(); };
+  ['import','annonce','pieces','deco','budget'].forEach(t => $('#tab-' + t).hidden = t !== tab); renderTab(); };
 
 function renderTab(){ if (tab === 'pieces') renderRooms(); if (tab === 'deco') renderDeco(); if (tab === 'budget') renderBudget(); }
 
@@ -1201,13 +1365,13 @@ function renderDetected(p){
     ${p.chambreAreas.length ? ch(true, 'Chambres ' + p.chambreAreas.map(fmtA).join(' / ') + ' m²') : ''}
   </div><p class="hint">Les surfaces non indiquées sont estimées. Les pièces sont posées côte à côte : déplacez-les et redimensionnez-les ensuite pour coller au vrai plan.</p>`;
 }
-$('#reload-releve').onclick = () => { commit(() => { S = maisonDeVille(); level = 0; sel = null; }); if (T) T.fitted = false; fitPlan(); toast('Relevé d\'origine rechargé.', true); };
+$('#reload-releve').onclick = () => { if (T && camMode === 'walk') setCam('orbit'); commit(() => { S = maisonDeVille(); level = 0; sel = null; }); if (T) T.fitted = false; fitPlan(); toast('Relevé d\'origine rechargé.', true); };
 $('#parse').onclick = () => renderDetected(parseListing($('#listing').value));
 $('#generate').onclick = () => {
   const txt = $('#listing').value.trim(); if (!txt){ toast('Collez d\'abord le texte de l\'annonce.'); return; }
   const p = parseListing(txt); renderDetected(p);
   commit(() => { const name = S.name; const style = S.styleId; S = generateProject(p, style); S.name = name === 'Ma future maison (exemple)' ? 'Ma future maison' : name; S.listingText = txt; applyStyle(style); S.rooms.forEach(r => S.items.push(...furnish(r))); level = 0; sel = null; });
-  if (T) T.fitted = false; fitPlan(); build3D(); toast('Plan généré à partir de l\'annonce.', true);
+  if (T && camMode === 'walk') setCam('orbit'); if (T) T.fitted = false; fitPlan(); build3D(); toast('Plan généré à partir de l\'annonce.', true);
 };
 
 function renderRooms(){
@@ -1398,8 +1562,110 @@ function toast(msg, withUndo){ const t = $('#toast'); t.innerHTML = `<span>${esc
 
 function renderAll(){
   $('#proj-name').value = S.name || ''; $('#ex-badge').hidden = !(S.example || S.estimated); $('#ex-badge').textContent = S.example ? 'Exemple' : 'Cotes estimées';
-  renderLevels(); renderPlan(); renderInspector(); renderTab(); schedule3D(); updUndo(); save();
+  renderLevels(); renderPlan(); renderInspector(); renderTab(); schedule3D(); updUndo(); save(); renderNotes();
 }
+
+/* ===================== Import : plan / photos -> maquette (Claude) ===================== */
+let impFiles = [], impCtl = null, sampleFn = null, imgLimits = null;
+function renderThumbs(){
+  $('#thumbs').innerHTML = impFiles.map((f, i) => `<figure><img alt="" src="${f.url}"><button data-rm="${i}" aria-label="Retirer">×</button></figure>`).join('');
+  const max = imgLimits ? imgLimits.maxCount : 10;
+  $('#imp-status').textContent = impFiles.length ? `${impFiles.length} image${impFiles.length > 1 ? 's' : ''} prête${impFiles.length > 1 ? 's' : ''} (max ${max}).` : '';
+}
+function addFiles(list){ const max = imgLimits ? imgLimits.maxCount : 10;
+  [...list].filter(f => /^image\/(png|jpe?g|webp|gif)$/.test(f.type)).forEach(f => { if (impFiles.length < max) impFiles.push({file: f, url: URL.createObjectURL(f)}); });
+  renderThumbs(); }
+$('#imp-files').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+const drop = $('#drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+document.addEventListener('paste', e => { if (tab !== 'import') return; const fs = [...(e.clipboardData?.files || [])]; if (fs.length) addFiles(fs); });
+$('#thumbs').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; URL.revokeObjectURL(impFiles[+b.dataset.rm].url); impFiles.splice(+b.dataset.rm, 1); renderThumbs(); });
+
+function importPrompt(notes){
+  return `Tu es métreur et architecte d'intérieur. Les images jointes montrent une maison : plan d'agence, croquis coté et/ou photos des pièces (captures d'annonce possibles). Reconstruis la maison pour un logiciel de modélisation 2D/3D.
+
+Informations données par l'utilisateur : ${notes || 'aucune'}
+
+Règles de géométrie :
+- Unités : mètres, cotes intérieures, arrondies à 0,05 m. Un repère par niveau : x vers la droite, y vers le bas du plan, origine (0,0) au coin haut gauche de l'emprise. Mets la façade sur rue en y = 0 quand on la reconnaît.
+- Pièces rectangulaires uniquement : découpe une pièce en L en deux rectangles (même nom suivi de « (2) »). Deux pièces voisines partagent exactement la même ligne de mur, sans trou ni chevauchement. Les niveaux se superposent (même repère, murs porteurs alignés).
+- Si un plan coté est fourni, reprends ses cotes. Sinon, estime à partir d'objets de taille connue : porte 0,83 × 2,04 m, marche d'escalier 0,18 m de haut et 0,25 m de giron, lit double 1,40 à 1,60 m, plan de travail 0,60 m de profondeur, carreau ou lame de sol visibles, hauteur sous plafond 2,50 m.
+- Respecte la surface habitable annoncée si elle est connue. Une maison sur plusieurs niveaux a une pièce "escalier" à chaque niveau desservi, au même endroit.
+
+Réponds uniquement par un objet JSON de cette forme :
+{"name": "Maison …",
+ "levels": [{"name": "RDC"}, {"name": "1er étage"}],
+ "rooms": [{"level": 0, "name": "Séjour", "type": "sejour", "x": 0, "y": 0, "w": 4.0, "d": 3.9, "floor": "parquet-chene", "wall": "#f3f1ec", "skylight": false}],
+ "openings": [{"level": 0, "kind": "entry", "x1": 0.6, "y1": 0, "x2": 1.5, "y2": 0, "h": 2.15, "sill": 0}],
+ "items": [{"level": 0, "kind": "cuisine", "x": 3.6, "y": 8.4, "rot": 90, "w": 3.2, "d": 0.62, "color": "#7d1d27"}],
+ "notes": ["hypothèse ou cote à vérifier, en français, une phrase chacune"]}
+
+Valeurs permises :
+- type : ${Object.keys(ROOM_TYPES).join(', ')} (terrasse pour une cour ou un jardin, remise pour une dépendance ou des combles perdus).
+- floor : ${Object.keys(FLOORS).join(', ')} (choisis le plus proche de ce qu'on voit).
+- wall : couleur hexadécimale des murs vue sur les photos (blanc cassé par défaut).
+- skylight : true si la pièce a une verrière ou un puits de lumière.
+- kind d'ouverture : door (porte intérieure), entry (porte d'entrée), window (fenêtre, avec sill = hauteur d'allège ~0,9), french (porte-fenêtre), open (passage sans porte). Une ouverture est un segment posé exactement sur une ligne de mur : horizontal (y1 = y2) ou vertical (x1 = x2), avec x1 < x2 ou y1 < y2.
+- kind d'objet : ${Object.keys(CATALOG).join(', ')}. Ne mets que les équipements fixes visibles (cuisine, sanitaires, placards, appareils). x, y = centre ; w = longueur le long du mur ; d = profondeur ; rot = côté du dos : 0 dos contre le mur du haut, 90 à droite, 180 en bas, 270 à gauche.
+Mets dans notes les hypothèses importantes et les mesures que l'utilisateur devrait vérifier.`;
+}
+const isHex = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+const num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+function sanitizeProject(j){
+  if (!j || !Array.isArray(j.rooms) || !j.rooms.length) throw new Error('no_rooms');
+  const st = STY();
+  const rooms = j.rooms.slice(0, 80).map(r => { const type = ROOM_TYPES[r.type] ? r.type : 'couloir';
+    return {id: uid(), level: clamp(Math.round(num(r.level)), 0, 5), type, name: String(r.name || ROOM_TYPES[type].label).slice(0, 40),
+      x: r2(snap(num(r.x))), y: r2(snap(num(r.y))), w: r2(Math.max(0.6, snap(num(r.w, 3)))), d: r2(Math.max(0.6, snap(num(r.d, 3)))),
+      floor: FLOORS[r.floor] ? r.floor : styleFloor(st, type), wall: isHex(r.wall) ? r.wall.toLowerCase() : '#f3f1ec', skylight: !!r.skylight, works: defaultWorks(type)}; });
+  const maxL = Math.max(...rooms.map(r => r.level));
+  const levels = Array.from({length: maxL + 1}, (_, i) => ({name: String(j.levels?.[i]?.name || (i === 0 ? 'RDC' : i === 1 ? '1er étage' : 'Niveau ' + i)).slice(0, 24)}));
+  const openings = (Array.isArray(j.openings) ? j.openings : []).slice(0, 200).map(o => {
+    let x1 = snap(num(o.x1)), y1 = snap(num(o.y1)), x2 = snap(num(o.x2)), y2 = snap(num(o.y2));
+    if (Math.abs(y1 - y2) <= Math.abs(x1 - x2)){ y2 = y1; if (x2 < x1) [x1, x2] = [x2, x1]; } else { x2 = x1; if (y2 < y1) [y1, y2] = [y2, y1]; }
+    const kind = OPEN_KINDS[o.kind] ? o.kind : 'door', d = OPEN_DEF[kind];
+    return {id: uid(), level: clamp(Math.round(num(o.level)), 0, maxL), kind, x1: r2(x1), y1: r2(y1), x2: r2(x2), y2: r2(y2), h: clamp(num(o.h, d.h), 0.4, 2.5), sill: clamp(num(o.sill, d.sill), 0, 2), flip: false};
+  }).filter(o => (o.x2 - o.x1) + (o.y2 - o.y1) >= 0.3);
+  const items = (Array.isArray(j.items) ? j.items : []).slice(0, 150).filter(i => CATALOG[i.kind]).map(i => { const c = CATALOG[i.kind];
+    const it = {id: uid(), kind: i.kind, level: clamp(Math.round(num(i.level)), 0, maxL), x: r2(num(i.x)), y: r2(num(i.y)), rot: (([0, 90, 180, 270].includes(num(i.rot))) ? num(i.rot) : 0), w: r2(clamp(num(i.w, c.w), 0.2, 6)), d: r2(clamp(num(i.d, c.d), 0.2, 3))};
+    if (isHex(i.color)) it.color = i.color; return it; });
+  const notes = (Array.isArray(j.notes) ? j.notes : []).map(n => String(n).slice(0, 300)).slice(0, 12);
+  const hab = rooms.filter(r => !NON_HAB.has(r.type)).reduce((a, r) => a + r.w * r.d, 0);
+  return {v: 2, name: String(j.name || 'Maison importée').slice(0, 60), estimated: true, example: false, styleId: S.styleId || 'scandinave',
+    levels, rooms, openings, items, notes, listing: {surface: Math.round(hab)}, listingText: S.listingText || ''};
+}
+function renderNotes(){ const el = $('#imp-notes-out'); const n = S.notes || [];
+  el.hidden = !n.length; el.innerHTML = n.length ? `<h3>Hypothèses de Claude à vérifier</h3><ul>${n.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''; }
+const IMP_ERR = {not_granted: "Vous n'avez pas autorisé cette page à utiliser Claude. La modélisation automatique reste désactivée pour cette visite.",
+  sampling_disabled: "Claude n'est pas disponible pour ce compte.", images_unavailable: "Cette vue ne peut pas envoyer d'images à Claude. Ouvrez la page dans claude.ai ou l'app Claude.",
+  image_rejected: "Une image n'a pas été acceptée (format ou taille). Essayez une capture en JPEG ou PNG.", rate_limited: "Trop de demandes pour le moment. Réessayez dans quelques minutes.",
+  invalid_json: "La réponse n'a pas pu être lue comme un plan. Relancez, ou ajoutez des précisions (surface, nombre de niveaux).", refused: "Claude a refusé ces images. Essayez avec d'autres captures.",
+  session_expired: "Votre session a expiré : reconnectez-vous à Claude.", no_rooms: "Aucune pièce n'a été reconnue. Ajoutez le plan ou des photos plus larges."};
+$('#imp-go').onclick = async () => {
+  if (!impFiles.length){ $('#imp-status').textContent = 'Ajoutez au moins une image : le plan ou des photos des pièces.'; return; }
+  if (!sampleFn){ $('#imp-status').textContent = "La modélisation automatique fonctionne quand la page est ouverte dans Claude (claude.ai ou l'app). Vous pouvez aussi envoyer les images dans la conversation."; return; }
+  impCtl = new AbortController(); $('#imp-go').disabled = true; $('#imp-stop').hidden = false;
+  $('#imp-status').textContent = 'Claude étudie les images… (souvent 1 à 3 minutes)';
+  try {
+    const j = await sampleFn.json(importPrompt($('#imp-notes').value.trim()), {images: impFiles.map(f => f.file), modelTier: 'complex', signal: impCtl.signal, cache: false,
+      onText: ({text}) => { const n = (text.match(/"type"\s*:/g) || []).length; $('#imp-status').textContent = n ? `Construction de la maquette… ${n} pièce${n > 1 ? 's' : ''} identifiée${n > 1 ? 's' : ''}` : 'Lecture du plan…'; }});
+    const proj = sanitizeProject(j);
+    commit(() => { S = proj; level = 0; sel = null; }); if (T && camMode === 'walk') setCam('orbit');
+    if (T) T.fitted = false; setView(window.innerWidth > 760 ? 'split' : '3d'); fitPlan(); renderNotes();
+    const hab = proj.rooms.filter(r => !NON_HAB.has(r.type)).reduce((a, r) => a + r.w * r.d, 0);
+    $('#imp-status').textContent = `Maquette créée : ${proj.rooms.length} pièces sur ${proj.levels.length} niveau${proj.levels.length > 1 ? 'x' : ''}, ${fmtA(hab)} m² habitables. Corrigez les cotes sur le plan si besoin.`;
+    toast('Maquette créée à partir de vos images.', true);
+  } catch (e) {
+    const code = e && (e.code || e.message);
+    $('#imp-status').textContent = code === 'cancelled' ? 'Analyse arrêtée.' : (IMP_ERR[code] || "L'analyse a échoué. Réessayez dans un instant.");
+  } finally { $('#imp-go').disabled = false; $('#imp-stop').hidden = true; impCtl = null; }
+};
+$('#imp-stop').onclick = () => impCtl && impCtl.abort();
+(async () => { try { const c = window.claude; if (!c || !c.use) throw 0; sampleFn = await c.use('sample'); if (sampleFn){ imgLimits = (await sampleFn.limits().catch(() => null))?.images || null; } } catch (e) { sampleFn = null; }
+  if (!sampleFn || !imgLimits){ $('#imp-status').textContent = sampleFn ? "Cette vue ne peut pas envoyer d'images à Claude. Ouvrez la page dans claude.ai ou l'app Claude." : ''; }
+  else $('#imp-files').accept = imgLimits.mediaTypes.join(','); })();
 
 /* ===================== Démarrage ===================== */
 function boot(){

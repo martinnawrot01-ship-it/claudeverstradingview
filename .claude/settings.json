@@ -5,10 +5,24 @@
         "source": "github",
         "repo": "Yeachan-Heo/oh-my-claudecode"
       }
+    },
+    "humanizer": {
+      "source": {
+        "source": "github",
+        "repo": "blader/humanizer"
+      }
+    },
+    "marketingskills": {
+      "source": {
+        "source": "github",
+        "repo": "coreyhaines31/marketingskills"
+      }
     }
   },
   "enabledPlugins": {
-    "oh-my-claudecode@omc": true
+    "oh-my-claudecode@omc": true,
+    "humanizer@humanizer": true,
+    "marketing-skills@marketingskills": true
   },
   "enabledMcpjsonServers": [
     "chrome-devtools"

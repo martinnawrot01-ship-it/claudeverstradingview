@@ -9,5 +9,8 @@
   },
   "enabledPlugins": {
     "oh-my-claudecode@omc": true
-  }
+  },
+  "enabledMcpjsonServers": [
+    "chrome-devtools"
+  ]
 }

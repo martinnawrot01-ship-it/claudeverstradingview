@@ -398,7 +398,6 @@ echo "✓ Complete!"
 **5. Download interrupted or failed**
 - Check internet connection
 - Verify sufficient disk space
-- Try again with `--no-check-certificate` if SSL issues occur
 
 **6. Multiple subtitle languages**
 - By default, yt-dlp downloads all available languages
